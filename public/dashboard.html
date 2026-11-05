@@ -55,6 +55,8 @@ code{background:#222d3d;border-radius:5px;padding:3px 6px}
 </section>
 <section class="panel">
 <h2>04 · Test nghi thức</h2>
+<div id="ttsStatus" class="status">ZeroTTS: đang kiểm tra...</div>
+<div class="actions"><button id="ttsRestart" class="secondary">Khởi động lại ZeroTTS</button></div>
 <label for="devotee">Tên hiển thị</label><input id="devotee" value="Khách thử nghiệm">
 <label for="wish">Lời cầu nguyện / comment</label><input id="wish" value="Cầu gia đình bình an">
 <div class="actions">
@@ -97,6 +99,8 @@ $('obsStatus').innerHTML=obs.connected?
 $('streamStatus').textContent='Phát LIVE: '+(obs.streaming?'ĐANG PHÁT':'Đã dừng')+' · Ghi hình: '+(obs.recording?'Đang ghi':'Đã dừng')+' · RTMP: '+(obs.destinationConfigured?'Đã cấu hình':'Chưa có key');
 $('tiktokStatus').textContent=state.tiktok?.connected?'● Đã kết nối @'+state.tiktok.username+' ('+(state.tiktok.viewerCount||0)+' xem)':state.tiktok?.connecting?'Đang kết nối...':(state.tiktok?.lastError||'Chưa kết nối');
 $('sim').textContent='Giả lập: '+(state.settings?.autoSim?'ĐANG BẬT':'TẮT');
+$('ttsStatus').textContent='ZeroTTS: '+(state.tts?.status||'chưa rõ')+
+  (state.tts?.lastError?' — '+state.tts.lastError:'');
 if(!document.activeElement || document.activeElement!==$('username'))if(!$('username').value && state.tiktok?.username)$('username').value='@'+state.tiktok.username;
 }catch(e){log('Lỗi làm mới: '+e.message);}
 }
@@ -118,10 +122,12 @@ document.querySelectorAll('[data-ritual]').forEach(btn=>btn.onclick=()=>run(btn,
 user:$('devotee').value,wish:$('wish').value,topic:$('wish').value,count:3
 })));
 $('sim').onclick=e=>run(e.currentTarget,()=>rpc('live.setAutoSim',{enabled:!lastState?.settings?.autoSim}));
+$('ttsRestart').onclick=e=>run(e.currentTarget,()=>rpc('temple.ttsRestart'));
 $('ttsTest').onclick=e=>run(e.currentTarget,async()=>{
 const r=await rpc('temple.speak',{text:$('speak').value,broadcast:false});
+if(!r?.ok)throw new Error(r?.error||'ZeroTTS failed');
 if(r?.url){$('ttsPlayer').src=r.url;$('ttsPlayer').play().catch(()=>{});}
-return {ok:r?.ok,error:r?.error};
+return {ok:true};
 });
 refresh();setInterval(refresh,5000);
 </script>
