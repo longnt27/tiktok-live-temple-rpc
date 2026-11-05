@@ -7,6 +7,7 @@ const cors = require('cors');
 const { WebSocketServer } = require('ws');
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = require('tiktok-live-connector');
 
+const obsBridge = require('./obs-bridge');
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const TTS_CACHE_DIR = path.join(DATA_DIR, 'tts-cache');
@@ -269,7 +270,7 @@ const DEFAULT_STATE = {
   tiktok: {
     connected: false,
     connecting: false,
-    username: 'zenfacts_vn',
+    username: '',
     roomId: null,
     viewerCount: 0,
     lastError: null
@@ -1094,13 +1095,66 @@ async function handleRpcCall(method, params = {}) {
 // 8. EXPRESS + WEBSOCKET SERVER
 // ============================================================================
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+const HOST = process.env.HOST || '127.0.0.1';
+if (!['127.0.0.1', '::1', 'localhost'].includes(HOST)) {
+  throw new Error('For safety this dashboard only accepts a loopback HOST.');
+}
+app.disable('x-powered-by');
+// Localhost-only management, not exposed to other devices or the internet.
+app.use((req, res, next) => {
+  const remote = req.socket.remoteAddress || '';
+  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(remote)) {
+    return res.status(403).json({ error: 'Local access only' });
+  }
+  next();
+});
+app.use(express.json({ limit: '64kb' }));
+app.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  const origin = req.headers.origin;
+  if (origin) {
+    let parsed;
+    try { parsed = new URL(origin); } catch (_) { return res.status(403).json({ error: 'Invalid origin' }); }
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname) ||
+        parsed.port !== String(PORT)) return res.status(403).json({ error: 'Cross-origin writes blocked' });
+  }
+  next();
+});
 app.use('/tts-cache', express.static(TTS_CACHE_DIR, { maxAge: '7d' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/admin', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+  res.redirect('/dashboard');
+});
+app.get('/dashboard', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/api/obs/status', async (_req, res) => {
+  res.json(await obsBridge.getStatus());
+});
+app.post('/api/obs/:action', async (req, res) => {
+  const action = req.params.action;
+  const body = req.body || {};
+  try {
+    let result;
+    switch (action) {
+      case 'open': result = await obsBridge.openObs(); break;
+      case 'password':
+        obsBridge.savePassword(body.password);
+        result = { ok: true }; break;
+      case 'setup': result = await obsBridge.setupScene(PORT); break;
+      case 'destination': result = await obsBridge.setDestination(body.server, body.key); break;
+      case 'start-stream': result = await obsBridge.action('startStream'); break;
+      case 'stop-stream': result = await obsBridge.action('stopStream'); break;
+      case 'start-record': result = await obsBridge.action('startRecord'); break;
+      case 'stop-record': result = await obsBridge.action('stopRecord'); break;
+      default: return res.status(404).json({ error: 'Unknown OBS action' });
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // HTTP JSON-RPC 2.0 Endpoint
@@ -1204,7 +1258,7 @@ wss.on('connection', (ws) => {
 
 const zeroTts = new ZeroTTSManager();
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   console.log(`============================================================`);
   console.log(`🪷 CHÙA ONLINE TIKTOK LIVE RPC ĐÃ KHỞI ĐỘNG`);
   console.log(`📺 Màn hình Live (9:16 OBS): http://localhost:${PORT}`);
@@ -1212,8 +1266,8 @@ server.listen(PORT, () => {
   console.log(`🔌 JSON-RPC 2.0 Endpoint   : http://localhost:${PORT}/rpc (ws://localhost:${PORT}/ws)`);
   console.log(`============================================================`);
 
-  // Tự động kết nối tới @zenfacts_vn ngay khi khởi động server
-  const defaultChannel = process.env.TIKTOK_USER || state.tiktok?.username || 'zenfacts_vn';
+  // Only connect when an actual channel was explicitly configured.
+  const defaultChannel = process.env.TIKTOK_USER || '';
   if (defaultChannel) {
     connectTikTokLive(defaultChannel).catch((err) => {
       console.warn(`[Auto-Connect @${defaultChannel}] Chưa kết nối được ngay:`, err.message);
