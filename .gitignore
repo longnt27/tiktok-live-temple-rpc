@@ -7,3 +7,9 @@ embedded-assets.js
 *.log
 *.m4a
 public/assets/bg_chant.m4a
+
+# OBS credentials and local user config
+obs-config.json
+.obs-websocket.json
+.env
+.env.*
