@@ -105,9 +105,13 @@ function connectObs(password = getPassword()) {
     socket.on('error', err => finish(new Error(
       'Khong the ket noi OBS WebSocket tai 127.0.0.1:4455: ' + err.message
     )));
-    socket.on('close', () => finish(new Error(
-      'OBS dong ket noi. Kiem tra Tools > WebSocket Server Settings va mat khau.'
-    )));
+    socket.on('close', (code, reason) => {
+      const detail = reason ? String(reason) : '';
+      const authFailed = code === 4009 || /auth|password/i.test(detail);
+      finish(new Error(authFailed
+        ? 'Mat khau OBS khong dung. Kiem tra Tools > WebSocket Server Settings.'
+        : 'OBS dong ket noi. Kiem tra WebSocket (port 4455). ' + detail));
+    });
     socket.on('message', raw => {
       try {
         const msg = JSON.parse(String(raw));
