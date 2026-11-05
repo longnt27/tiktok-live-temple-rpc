@@ -8,7 +8,10 @@ const { WebSocketServer } = require('ws');
 const { TikTokLiveConnection, WebcastEvent, ControlEvent } = require('tiktok-live-connector');
 
 const obsBridge = require('./obs-bridge');
+const { createObsAutomation } = require('./obs-auto');
+const { execFile } = require('child_process');
 const PORT = process.env.PORT || 3000;
+const obsAutomation = createObsAutomation(obsBridge, PORT);
 const DATA_DIR = path.join(__dirname, 'data');
 const TTS_CACHE_DIR = path.join(DATA_DIR, 'tts-cache');
 const STATE_FILE = path.join(DATA_DIR, 'merit-state.json');
@@ -1170,7 +1173,8 @@ app.get('/dashboard', (_req, res) => {
 });
 
 app.get('/api/obs/status', async (_req, res) => {
-  res.json(await obsBridge.getStatus());
+  const status = await obsBridge.getStatus();
+  res.json({ ...status, automation: obsAutomation.status() });
 });
 app.post('/api/obs/:action', async (req, res) => {
   const action = req.params.action;
@@ -1179,10 +1183,15 @@ app.post('/api/obs/:action', async (req, res) => {
     let result;
     switch (action) {
       case 'open': result = await obsBridge.openObs(); break;
+      case 'pair':
       case 'password':
-        obsBridge.savePassword(body.password);
-        result = { ok: true }; break;
-      case 'setup': result = await obsBridge.setupScene(PORT); break;
+        result = await obsAutomation.pair(body.password);
+        if (result.automation?.phase === 'error') {
+          throw new Error(result.automation.lastError || 'Khong the tao OBS scene.');
+        }
+        break;
+      // Backward-compatible endpoint: no separate setup click is necessary.
+      case 'setup': result = await obsAutomation.reconcile(); break;
       case 'destination': result = await obsBridge.setDestination(body.server, body.key); break;
       case 'start-stream': result = await obsBridge.action('startStream'); break;
       case 'stop-stream': result = await obsBridge.action('stopStream'); break;
@@ -1308,6 +1317,15 @@ wss.on('connection', (ws, req) => {
 const zeroTts = new ZeroTTSManager();
 
 server.listen(PORT, HOST, () => {
+  // If OBS opens later, recreate the dedicated stage automatically.
+  // This never starts a real stream or overwrites Stream Keys.
+  obsAutomation.start();
+  if (process.platform === 'darwin' && process.env.TEMPLE_AUTOSTART !== '0') {
+    obsBridge.openObs().catch(err => console.warn('[OBS launch]', err.message));
+    execFile('/usr/bin/open', [`http://127.0.0.1:${PORT}/dashboard`], (err) => {
+      if (err) console.warn('[Dashboard launch]', err.message);
+    });
+  }
   console.log(`============================================================`);
   console.log(`🪷 CHÙA ONLINE TIKTOK LIVE RPC ĐÃ KHỞI ĐỘNG`);
   console.log(`📺 Màn hình Live (9:16 OBS): http://localhost:${PORT}`);
