@@ -23,6 +23,14 @@ jobs:
           node --check public/js/live.js
           node --check tests/obs-bridge.test.js
           bash -n scripts/install-mac.sh
+      - name: Guard against stdin-consuming installer invocation
+        run: |
+          if cat scripts/install-mac.sh | bash > /tmp/installer-pipe-guard.log 2>&1; then
+            echo 'Piped execution must fail safely before Homebrew starts' >&2
+            exit 1
+          fi
+          grep -q 'Khong dung curl' /tmp/installer-pipe-guard.log
+          grep -Fq 'bash -c "$(curl -fsSL' README.md
       - name: OBS fake WebSocket integration tests
         run: node --test tests/*.test.js
       - name: Local HTTP dashboard smoke test
