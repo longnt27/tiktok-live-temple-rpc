@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chùa Online | Live Control</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#0c1018;color:#eef2f9}
+*{box-sizing:border-box}body{margin:0}header{padding:23px max(20px,calc((100vw - 1200px)/2));border-bottom:1px solid #252c39;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+h1{font-size:22px;margin:0}header p{color:#8d9aaf;margin:5px 0 0}a{color:#9fc2ff;text-decoration:none}
+main{max-width:1200px;margin:24px auto;padding:0 18px;display:grid;grid-template-columns:340px 1fr;gap:20px}
+.panel{background:#171d29;border:1px solid #2b3445;border-radius:16px;padding:20px;min-width:0}.panel h2{font-size:17px;margin:0 0 14px}.stack{display:grid;gap:14px}.wide{grid-column:2;grid-row:1/4}
+.preview{width:100%;aspect-ratio:9/16;max-height:74vh;border:1px solid #394254;background:#080a0d;border-radius:12px}
+label{display:block;font-size:13px;color:#a6b1c4;margin:12px 0 6px}
+input,textarea{width:100%;font:inherit;background:#0f1520;color:#fff;border:1px solid #3b465b;border-radius:9px;padding:11px}
+button{cursor:pointer;background:#365fa3;color:#fff;border:0;border-radius:9px;padding:10px 14px;font-weight:650}
+button.secondary{background:#293446}button.danger{background:#8d3642}button:disabled{opacity:.5;cursor:wait}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.status{font-size:13px;color:#b5c2d6;line-height:1.65}
+.notice{color:#f4d68d;font-size:12px}.green{color:#91dfab}.red{color:#ffa0a5}
+pre{white-space:pre-wrap;word-break:break-word;font-size:12px;color:#afc8de;max-height:160px;overflow:auto}
+code{background:#222d3d;border-radius:5px;padding:3px 6px}
+@media(max-width:900px){main{grid-template-columns:1fr}.wide{grid-column:auto;grid-row:auto;order:-1}.preview{max-width:450px;display:block;margin:auto}}
+</style>
+</head>
+<body>
+<header><div><h1>🪷 Chùa Online <span style="font-weight:400;color:#92a2bc">/ Live Control</span></h1>
+<p>OBS · TikTok · ZeroTTS · Mac Apple Silicon</p></div>
+<nav><a href="/?obs=1" target="_blank" rel="noopener">Mở sân khấu ↗</a></nav></header>
+<main>
+<div class="stack">
+<section class="panel">
+<h2>01 · OBS Studio</h2>
+<div id="obsStatus" class="status">Đang kiểm tra...</div>
+<div class="actions"><button data-obs="open" class="secondary">Mở OBS</button><button data-obs="setup">Tạo scene 9:16</button></div>
+<details style="margin-top:10px"><summary>OBS WebSocket password</summary>
+<label for="password">Lấy từ OBS → Tools → WebSocket Server Settings</label>
+<input id="password" type="password" autocomplete="off" placeholder="Mật khẩu OBS WebSocket">
+<div class="actions"><button data-obs="password" class="secondary">Lưu trên máy</button></div></details>
+<p class="notice">OBS WebSocket phải được bật ở cổng 4455. Giữ authentication bật; không mở cổng ra Internet.</p>
+</section>
+<section class="panel">
+<h2>02 · TikTok LIVE</h2>
+<div id="tiktokStatus" class="status">Đang kiểm tra...</div>
+<label for="username">Tên tài khoản LIVE công khai</label><input id="username" placeholder="@username" autocomplete="off">
+<div class="actions"><button id="ttConnect">Kết nối bình luận</button><button id="ttDisconnect" class="secondary">Ngắt</button></div>
+<p class="notice">Đọc sự kiện không đồng nghĩa với quyền phát LIVE. Tài khoản phải được TikTok cho phép phát từ OBS.</p>
+</section>
+<section class="panel">
+<h2>03 · Điểm phát video</h2>
+<div id="streamStatus" class="status"></div>
+<label for="server">RTMP(S) server do TikTok cấp</label><input id="server" type="url" placeholder="rtmps://...">
+<label for="streamKey">Stream Key</label><input id="streamKey" type="password" autocomplete="off" placeholder="Không được đưa lên GitHub">
+<div class="actions"><button data-obs="destination">Lưu vào OBS</button></div>
+<div class="actions"><button data-obs="start-stream">● Phát LIVE</button><button data-obs="stop-stream" class="danger">■ Dừng LIVE</button></div>
+<div class="actions"><button data-obs="start-record" class="secondary">⏺ Ghi thử</button><button data-obs="stop-record" class="secondary">Dừng ghi</button></div>
+</section>
+<section class="panel">
+<h2>04 · Test nghi thức</h2>
+<label for="devotee">Tên hiển thị</label><input id="devotee" value="Khách thử nghiệm">
+<label for="wish">Lời cầu nguyện / comment</label><input id="wish" value="Cầu gia đình bình an">
+<div class="actions">
+<button data-ritual="temple.burnIncense">Thắp hương</button><button data-ritual="temple.sendPrayer">Cầu nguyện</button>
+<button data-ritual="temple.drawFortune">Xin xăm</button><button data-ritual="temple.strikeWoodenFish">Gõ mõ</button>
+</div>
+<div class="actions"><button id="sim" class="secondary">Chế độ giả lập: ?</button></div>
+<label for="speak">Đọc thử ZeroTTS</label><input id="speak" value="Nam mô A Di Đà Phật, cầu bình an.">
+<div class="actions"><button id="ttsTest" class="secondary">Kiểm tra giọng đọc</button></div>
+<audio controls id="ttsPlayer" style="width:100%;margin-top:12px"></audio>
+</section>
+</div>
+<section class="panel wide">
+<h2>Sân khấu · Preview 9:16</h2>
+<iframe class="preview" src="/?obs=1" title="Preview chùa online" allow="autoplay"></iframe>
+<p class="notice">Preview có âm thanh độc lập. Chỉ theo dõi tiếng OBS trong Audio Mixer và quay thử trước khi LIVE. Nếu OBS im tiếng, chuột phải Browser Source → Interact và nhấn vào sân khấu để mở khóa audio.</p>
+<h2>Trạng thái / phản hồi</h2><pre id="log">Sẵn sàng.</pre>
+<p><a href="/api/state" target="_blank">Trạng thái server</a> · <a href="/?obs=1" target="_blank">Stage độc lập</a></p>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let lastState=null;
+function log(message){$('log').textContent=(new Date().toLocaleTimeString('vi-VN')+' '+message+'\n'+$('log').textContent).slice(0,4000);}
+async function api(url,data){
+const options=data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)};
+const response=await fetch(url,options);
+const json=await response.json();
+if(!response.ok)throw new Error(json.error||'HTTP '+response.status);
+return json;
+}
+async function rpc(method,params={}){const r=await api('/rpc',{jsonrpc:'2.0',id:Date.now(),method,params});if(r.error)throw new Error(r.error.message);return r.result;}
+async function refresh(){
+try{
+const [obs,state]=await Promise.all([api('/api/obs/status'),api('/api/state')]);
+lastState=state;
+$('obsStatus').innerHTML=obs.connected?
+'<span class="green">● Đã kết nối OBS '+esc(obs.version||'')+'</span><br>Scene: '+esc(obs.currentScene||'?')+'<br>Canvas: '+obs.canvas.width+'×'+obs.canvas.height+'<br>Scene 9:16: '+(obs.sceneReady?'Sẵn sàng':'Chưa tạo'):
+'<span class="red">● Chưa kết nối OBS</span><br>'+esc(obs.error||'');
+$('streamStatus').textContent='Phát LIVE: '+(obs.streaming?'ĐANG PHÁT':'Đã dừng')+' · Ghi hình: '+(obs.recording?'Đang ghi':'Đã dừng')+' · RTMP: '+(obs.destinationConfigured?'Đã cấu hình':'Chưa có key');
+$('tiktokStatus').textContent=state.tiktok?.connected?'● Đã kết nối @'+state.tiktok.username+' ('+(state.tiktok.viewerCount||0)+' xem)':state.tiktok?.connecting?'Đang kết nối...':(state.tiktok?.lastError||'Chưa kết nối');
+$('sim').textContent='Giả lập: '+(state.settings?.autoSim?'ĐANG BẬT':'TẮT');
+if(!document.activeElement || document.activeElement!==$('username'))if(!$('username').value && state.tiktok?.username)$('username').value='@'+state.tiktok.username;
+}catch(e){log('Lỗi làm mới: '+e.message);}
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function run(button,task){button.disabled=true;try{const result=await task();log('✓ '+(JSON.stringify(result)||'OK').slice(0,200));}catch(e){log('✕ '+e.message);}finally{button.disabled=false;refresh();}}
+document.querySelectorAll('[data-obs]').forEach(btn=>btn.onclick=()=>run(btn,async()=>{
+const a=btn.dataset.obs;
+if(a==='stop-stream'&&!confirm('Dừng phát LIVE thật trên OBS?'))return 'Đã hủy';
+if(a==='start-stream'&&!confirm('Phát LIVE tới máy chủ RTMP đang cấu hình trong OBS?'))return 'Đã hủy';
+const data=a==='password'?{password:$('password').value}:a==='destination'?{server:$('server').value,key:$('streamKey').value}:{};
+const r=await api('/api/obs/'+a,data);
+if(a==='password')$('password').value='';
+if(a==='destination')$('streamKey').value='';
+return r;
+}));
+$('ttConnect').onclick=e=>run(e.currentTarget,()=>rpc('live.connect',{username:$('username').value}));
+$('ttDisconnect').onclick=e=>run(e.currentTarget,()=>rpc('live.disconnect'));
+document.querySelectorAll('[data-ritual]').forEach(btn=>btn.onclick=()=>run(btn,()=>rpc(btn.dataset.ritual,{
+user:$('devotee').value,wish:$('wish').value,topic:$('wish').value,count:3
+})));
+$('sim').onclick=e=>run(e.currentTarget,()=>rpc('live.setAutoSim',{enabled:!lastState?.settings?.autoSim}));
+$('ttsTest').onclick=e=>run(e.currentTarget,async()=>{
+const r=await rpc('temple.speak',{text:$('speak').value,broadcast:false});
+if(r?.url){$('ttsPlayer').src=r.url;$('ttsPlayer').play().catch(()=>{});}
+return {ok:r?.ok,error:r?.error};
+});
+refresh();setInterval(refresh,5000);
+</script>
+</body></html>
