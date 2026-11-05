@@ -8,6 +8,12 @@ BREW="/opt/homebrew/bin/brew"
 log(){ printf '\n\033[1;35m[Chua Online]\033[0m %s\n' "$*"; }
 fail(){ printf '\n[Chua Online] LOI: %s\n' "$*" >&2; exit 1; }
 
+# When launched as `curl | bash`, Homebrew or child commands may consume
+# the remaining installer from stdin. Abort before any side effects.
+if [[ -p /dev/stdin ]]; then
+  fail 'Khong dung curl | bash vi Homebrew co the doc mat script. Hay dung: bash -c "$(curl -fsSL https://raw.githubusercontent.com/longnt27/tiktok-live-temple-rpc/main/scripts/install-mac.sh)"'
+fi
+
 [[ "$(uname -s)" == "Darwin" ]] || fail "Installer chi ho tro macOS."
 [[ "$(uname -m)" == "arm64" ]] || fail "Installer danh cho Mac Apple Silicon."
 if ! xcode-select -p >/dev/null 2>&1; then
