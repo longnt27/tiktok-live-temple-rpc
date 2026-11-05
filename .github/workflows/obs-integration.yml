@@ -23,6 +23,7 @@ jobs:
           node --check public/js/live.js
           node --check tests/obs-bridge.test.js
           bash -n scripts/install-mac.sh
+          python3 -m py_compile tts_worker.py tts_model.py
       - name: Guard against stdin-consuming installer invocation
         run: |
           if cat scripts/install-mac.sh | bash > /tmp/installer-pipe-guard.log 2>&1; then
@@ -31,6 +32,8 @@ jobs:
           fi
           grep -q 'Khong dung curl' /tmp/installer-pipe-guard.log
           grep -Fq 'bash -c "$(curl -fsSL' README.md
+      - name: Hugging Face cache symlink regression test
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: OBS fake WebSocket integration tests
         run: node --test tests/*.test.js
       - name: Local HTTP dashboard smoke test
