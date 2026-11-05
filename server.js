@@ -1193,7 +1193,23 @@ app.post('/api/obs/:action', async (req, res) => {
       // Backward-compatible endpoint: no separate setup click is necessary.
       case 'setup': result = await obsAutomation.reconcile(); break;
       case 'destination': result = await obsBridge.setDestination(body.server, body.key); break;
-      case 'start-stream': result = await obsBridge.action('startStream'); break;
+      case 'start-stream': {
+        // The explicit Start LIVE click also applies a new RTMP destination.
+        // Never broadcast automatically, and never start with a missing key.
+        const serverUrl = body.server;
+        const streamKey = body.key;
+        if (serverUrl || streamKey) {
+          await obsBridge.setDestination(serverUrl, streamKey);
+        } else {
+          const status = await obsBridge.getStatus();
+          if (!status.connected) throw new Error(status.error || 'OBS chua ket noi.');
+          if (!status.destinationConfigured) {
+            throw new Error('Chua co RTMP Server va Stream Key. Nhap tu TikTok truoc khi phat LIVE.');
+          }
+        }
+        result = await obsBridge.action('startStream');
+        break;
+      }
       case 'stop-stream': result = await obsBridge.action('stopStream'); break;
       case 'start-record': result = await obsBridge.action('startRecord'); break;
       case 'stop-record': result = await obsBridge.action('stopRecord'); break;
