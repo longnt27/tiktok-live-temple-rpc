@@ -60,11 +60,8 @@ log "Cai ZeroTTS Python 3.11 (lan dau can tai model)..."
 uv venv --python 3.11 .venv
 uv pip install --python .venv/bin/python zerotts pillow
 
-log "Mo OBS va dashboard..."
-open -a OBS || true
-(sleep 3; open "http://127.0.0.1:3000/dashboard") >/dev/null 2>&1 &
-
 log "Da cai dat. Giu Terminal nay mo khi dang livestream."
+log "Bun se tu mo OBS va dashboard khi server san sang."
 log "Dashboard: http://127.0.0.1:3000/dashboard"
 log "OBS: Tools > WebSocket Server Settings > Enable WebSocket server (4455), copy password vao dashboard."
 log "DUNG chia se Stream Key, hoac mo port 3000/4455 ra Internet."
