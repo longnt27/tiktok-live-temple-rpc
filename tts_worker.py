@@ -25,14 +25,12 @@ os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "3")
 import numpy as np
 from zerotts import ZeroTTS, normalize_vi_text
 from zerotts.chunking import normalize_punctuation
+from tts_model import materialize_model
 
 CACHE_DIR = Path(__file__).resolve().parent / "data" / "tts-cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-LOCAL_MODEL_CANDIDATES = [
-    os.environ.get("ZEROTTS_MODEL_PATH", ""),
-    "/Users/zens/Work/UIT/Projects/f1-metrics-explainer/models/zerotts",
-]
+MODEL_DIR = Path(__file__).resolve().parent / "data" / "zerotts-model"
 
 # Chỉ giữ lại chữ cái tiếng Việt (Latin + dấu tiếng Việt), chữ số và dấu câu cơ bản
 VIETNAMESE_ALLOWED_RE = re.compile(
@@ -45,10 +43,24 @@ MULTI_SPACE_RE = re.compile(r"\s+")
 
 
 def resolve_model_source() -> str:
-    for candidate in LOCAL_MODEL_CANDIDATES:
-        if candidate and os.path.isdir(candidate) and os.path.isfile(os.path.join(candidate, "config.json")):
-            return candidate
-    return "zeroweight-ai/ZeroTTS"
+    """Use real local files, not the Hugging Face symlink snapshot.
+
+    New ONNX Runtime builds reject ONNX external .data symlinks that resolve
+    into a different HF blobs/ directory. Do not modify the original HF cache.
+    """
+    specified = os.environ.get("ZEROTTS_MODEL_PATH", "").strip()
+    if specified:
+        source = Path(specified).expanduser()
+        if not (source / "config.json").is_file():
+            raise FileNotFoundError(f"ZEROTTS_MODEL_PATH is not a model directory: {source}")
+    else:
+        from zerotts.hub import resolve_model_dir
+        source = resolve_model_dir("zeroweight-ai/ZeroTTS")
+
+    prepared = materialize_model(source, MODEL_DIR)
+    if Path(source).resolve() != prepared.resolve():
+        print(f"[ZeroTTS] Prepared local ONNX model: {prepared}", file=sys.stderr, flush=True)
+    return str(prepared)
 
 
 def emit(payload: dict) -> None:
@@ -114,10 +126,11 @@ def polish_waveform(wav: np.ndarray, sample_rate: int) -> np.ndarray:
 
 def main() -> None:
     t0 = time.time()
-    model_src = resolve_model_source()
-    emit({"type": "status", "status": "loading", "model": model_src})
+    emit({"type": "status", "status": "preparing", "model": "zeroweight-ai/ZeroTTS"})
 
     try:
+        model_src = resolve_model_source()
+        emit({"type": "status", "status": "loading", "model": model_src})
         tts = ZeroTTS.from_pretrained(model_src, intra_op_num_threads=3)
         voices = tts.list_voices()
         default_voice = "maichi" if "maichi" in voices else (voices[0] if voices else None)
