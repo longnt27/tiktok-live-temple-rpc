@@ -109,6 +109,8 @@ class ZeroTTSManager {
     this.proc = null;
     this.ready = false;
     this.status = 'starting';
+    this.lastError = null;
+    this.stderrTail = '';
     this.voice = 'maichi';
     this.voices = ['maichi'];
     this.model = 'zeroweight-ai/ZeroTTS';
@@ -126,6 +128,11 @@ class ZeroTTSManager {
   }
 
   startWorker() {
+    if (this.proc) throw new Error('ZeroTTS worker already running');
+    this.lastError = null;
+    this.stderrTail = '';
+    this.ready = false;
+    this.buffer = '';
     const pyBin = this.resolvePythonBin();
     const scriptPath = path.join(__dirname, 'tts_worker.py');
     console.log(`[ZeroTTS] Khởi chạy worker với ${pyBin} (Giọng mặc định: Mai Chi)...`);
@@ -146,20 +153,38 @@ class ZeroTTSManager {
       }
     });
 
-    this.proc.stderr.on('data', (chunk) => {
+    const worker = this.proc;
+    worker.stderr.on('data', (chunk) => {
       const msg = chunk.toString('utf8').trim();
-      if (msg) console.log(`[ZeroTTS stderr] ${msg}`);
+      if (msg) {
+        this.stderrTail = (this.stderrTail + '\n' + msg).slice(-2000);
+        console.log(`[ZeroTTS stderr] ${msg}`);
+      }
     });
 
-    this.proc.on('exit', (code) => {
-      console.warn(`[ZeroTTS] Worker thoát với mã ${code}`);
+    // A missing Python executable emits 'error', not necessarily 'exit'.
+    worker.on('error', (err) => {
+      this.lastError = err.message;
+      this.status = 'error';
+      console.error('[ZeroTTS spawn error]', err);
+      broadcastNotification('tts.status', this.getStatus());
+    });
+
+    worker.on('close', (code) => {
+      if (this.proc !== worker) return;
+      this.proc = null;
       this.ready = false;
-      this.status = 'stopped';
+      if (this.status !== 'error') this.status = 'stopped';
+      if (!this.lastError) {
+        this.lastError = `Worker thoát (mã ${code}). ${this.stderrTail.slice(-800)}`.trim();
+      }
+      console.warn(`[ZeroTTS] Worker thoát với mã ${code}: ${this.lastError}`);
       for (const [, item] of this.pending) {
         clearTimeout(item.timer);
-        item.resolve({ ok: false, error: 'ZeroTTS worker exited' });
+        item.resolve({ ok: false, error: this.lastError });
       }
       this.pending.clear();
+      broadcastNotification('tts.status', this.getStatus());
     });
   }
 
@@ -171,6 +196,7 @@ class ZeroTTSManager {
         this.model = msg.model || this.model;
         broadcastNotification('tts.status', this.getStatus());
       } else if (msg.type === 'ready') {
+        this.lastError = null;
         this.ready = true;
         this.status = 'ready';
         this.voice = msg.voice || 'maichi';
@@ -186,7 +212,8 @@ class ZeroTTSManager {
           entry.resolve(msg);
         }
       } else if (msg.type === 'error') {
-        console.error('[ZeroTTS Error]', msg.error);
+        this.lastError = String(msg.error || 'Unknown ZeroTTS error').slice(0, 1800);
+        console.error('[ZeroTTS Error]', this.lastError, msg.trace || '');
         this.status = 'error';
         broadcastNotification('tts.status', this.getStatus());
       }
@@ -202,8 +229,18 @@ class ZeroTTSManager {
       engine: 'ZeroTTS (zeroweight-ai/ZeroTTS)',
       voice: state.settings.ttsVoice || this.voice || 'maichi',
       voices: this.voices,
-      model: this.model
+      model: this.model,
+      lastError: this.lastError
     };
+  }
+
+  restart() {
+    if (this.proc) {
+      throw new Error('Worker dang chay hoac dang thoat. Thu lai sau khi Python dung han.');
+    }
+    this.startWorker();
+    broadcastNotification('tts.status', this.getStatus());
+    return this.getStatus();
   }
 
   synthesize(text, voiceOverride) {
@@ -218,7 +255,7 @@ class ZeroTTSManager {
 
     const promise = new Promise((resolve) => {
       if (!this.proc || !this.ready) {
-        return resolve({ ok: false, error: `ZeroTTS đang ở trạng thái: ${this.status}` });
+        return resolve({ ok: false, error: this.lastError || `ZeroTTS đang ở trạng thái: ${this.status}` });
       }
       const id = ++this.reqCounter;
       const timer = setTimeout(() => {
@@ -1077,6 +1114,8 @@ async function handleRpcCall(method, params = {}) {
     }
     case 'temple.ttsStatus':
       return zeroTts.getStatus();
+    case 'temple.ttsRestart':
+      return zeroTts.restart();
     case 'live.connect':
       return await connectTikTokLive(params.username);
     case 'live.disconnect':
