@@ -1,0 +1,39 @@
+name: Mac OBS integration checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feat/mac-obs-dashboard
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile
+      - name: Syntax checks
+        run: |
+          node --check server.js
+          node --check obs-bridge.js
+          node --check public/js/live.js
+          node --check tests/obs-bridge.test.js
+          bash -n scripts/install-mac.sh
+      - name: OBS fake WebSocket integration tests
+        run: node --test tests/*.test.js
+      - name: Local HTTP dashboard smoke test
+        run: |
+          PORT=3300 bun start > /tmp/temple-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3300/dashboard > /tmp/dashboard.html; then break; fi
+            sleep 1
+          done
+          grep -q 'Live Control' /tmp/dashboard.html
+          curl -fsS http://127.0.0.1:3300/api/obs/status | grep -q '"connected":false'
+          curl -fsS http://127.0.0.1:3300/api/state | grep -q '"tiktok"'
