@@ -7,10 +7,12 @@ Hệ thống livestream TikTok tương tác 9:16, chạy cục bộ trên Mac Ap
 Trên macOS Apple Silicon (M1/M2/M3/M4), mở Terminal:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/longnt27/tiktok-live-temple-rpc/main/scripts/install-mac.sh | bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/longnt27/tiktok-live-temple-rpc/main/scripts/install-mac.sh)"
 ```
 
 Lệnh cài Homebrew (nếu thiếu), Bun, Python 3.11, uv, Git và OBS Studio, clone repo vào `~/projects/tiktok-live-temple-rpc`, cài dependencies, mở OBS và dashboard.
+
+**Không dùng `curl ... | bash` cho installer này.** Trong quá trình Homebrew cài dependency, một tiến trình con có thể đọc stdin và vô tình nuốt các dòng còn lại của script. Lệnh `bash -c "$(curl ...)"` tải toàn bộ script trước khi chạy nên tránh được lỗi này. Nếu lần cài đầu dừng giữa chừng, cứ chạy lại lệnh trên: các gói Homebrew đã cài sẽ được giữ nguyên.
 
 Có thể đổi thư mục đích nếu cần bằng biến môi trường `TEMPLE_DIR`, nhưng mặc định là `~/projects/tiktok-live-temple-rpc`. Lần đầu macOS có thể yêu cầu cài Xcode Command Line Tools; hoàn tất hộp thoại đó rồi chạy lại lệnh. Lần đầu ZeroTTS có thể tải model. Đọc script trước khi chạy nếu muốn kiểm toán lệnh cài đặt.
 
