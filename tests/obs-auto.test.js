@@ -95,3 +95,15 @@ test('concurrent setup reconciliations are serialized', async () => {
   assert.ok(first.automation.ready && second.automation.ready && third.automation.ready);
   assert.equal(calls.setup, 1);
 });
+
+test('pairing selects an existing stage without asking user to press setup again', async () => {
+  const { bridge, state, calls } = fakeObs();
+  state.sceneReady = true;
+  state.canvas = { ...portrait };
+  const auto = createObsAutomation(bridge, 3000);
+  const result = await auto.pair('my-valid-password');
+  assert.equal(result.automation.ready, true);
+  assert.equal(calls.setup, 1, 'explicit pairing activates the existing scene');
+  await auto.reconcile();
+  assert.equal(calls.setup, 1, 'subsequent background checks are non-invasive');
+});
