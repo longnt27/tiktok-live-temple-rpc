@@ -66,8 +66,22 @@ bun start
 | Stream không có tiếng | OBS Browser Source → Interact → click; kiểm tra audio mixer và record thử |
 | TikTok không có sự kiện | Phòng phải đang LIVE công khai; connector không chính thức nên có thể lỗi khi TikTok đổi giao thức |
 | Start Stream báo lỗi | Kiểm tra quyền RTMP của tài khoản, Server URL và Stream Key |
-| TTS không chạy | Xem Terminal, Python venv và model tải về lần đầu |
+| TTS không chạy | Dashboard hiển thị `ZeroTTS: error` và lý do chi tiết; bấm **Khởi động lại ZeroTTS** sau khi khắc phục |
 | Cổng 3000 bị chiếm | Dừng server cũ đang chạy |
+
+## Khắc phục lỗi ZeroTTS / ONNX Runtime trên macOS
+
+Nếu ZeroTTS báo `External data path escapes model directory`, nguyên nhân là Hugging Face snapshot lưu ONNX và `.data` dưới dạng symlink vào cache blobs, nhưng ONNX Runtime từ chối truy cập dữ liệu ngoài thư mục model. Bản cập nhật tự động chuẩn bị một model local thật tại `data/zerotts-model`, ưu tiên hard link trên cùng ổ đĩa để không tốn thêm dung lượng, fallback sao chép nếu khác ổ. Cache Hugging Face không bị sửa hay xóa. Bản model local được tái sử dụng ở các lần chạy tiếp theo.
+
+Nếu đã cài bản cũ, **Ctrl+C** để tắt server rồi chạy:
+
+```bash
+cd ~/projects/tiktok-live-temple-rpc
+git pull --ff-only
+bun start
+```
+
+Model sẽ được chuẩn bị trong lần khởi động đầu. Nếu vẫn có lỗi, dashboard sẽ hiện nguyên nhân thay vì chỉ `stopped`. Trên dashboard có nút **Khởi động lại ZeroTTS**. Nếu muốn xem log trực tiếp, chạy `.venv/bin/python tts_worker.py` tại thư mục dự án.
 
 ## An toàn và giới hạn
 
