@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 REPO_URL="https://github.com/longnt27/tiktok-live-temple-rpc.git"
-APP_DIR="$HOME/Applications/tiktok-live-temple-rpc"
+APP_DIR="${TEMPLE_DIR:-$HOME/projects/tiktok-live-temple-rpc}"
 BREW="/opt/homebrew/bin/brew"
 
 log(){ printf '\n\033[1;35m[Chua Online]\033[0m %s\n' "$*"; }

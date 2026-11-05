@@ -10,7 +10,9 @@ Trên macOS Apple Silicon (M1/M2/M3/M4), mở Terminal:
 curl -fsSL https://raw.githubusercontent.com/longnt27/tiktok-live-temple-rpc/main/scripts/install-mac.sh | bash
 ```
 
-Lệnh cài Homebrew (nếu thiếu), Bun, Python 3.11, uv, Git và OBS Studio, clone repo vào `~/Applications/tiktok-live-temple-rpc`, cài dependencies, mở OBS và dashboard. Lần đầu macOS có thể yêu cầu cài Xcode Command Line Tools; hoàn tất hộp thoại đó rồi chạy lại lệnh. Lần đầu ZeroTTS có thể tải model. Đọc script trước khi chạy nếu muốn kiểm toán lệnh cài đặt.
+Lệnh cài Homebrew (nếu thiếu), Bun, Python 3.11, uv, Git và OBS Studio, clone repo vào `~/projects/tiktok-live-temple-rpc`, cài dependencies, mở OBS và dashboard.
+
+Có thể đổi thư mục đích nếu cần bằng biến môi trường `TEMPLE_DIR`, nhưng mặc định là `~/projects/tiktok-live-temple-rpc`. Lần đầu macOS có thể yêu cầu cài Xcode Command Line Tools; hoàn tất hộp thoại đó rồi chạy lại lệnh. Lần đầu ZeroTTS có thể tải model. Đọc script trước khi chạy nếu muốn kiểm toán lệnh cài đặt.
 
 - Dashboard: http://127.0.0.1:3000/dashboard
 - Sân khấu độc lập: http://127.0.0.1:3000/?obs=1
@@ -36,7 +38,7 @@ Dashboard hỗ trợ kết nối/ngắt TikTok, mở OBS, tạo scene, ghi thử
 ### Chạy lần sau
 
 ```bash
-cd ~/Applications/tiktok-live-temple-rpc
+cd ~/projects/tiktok-live-temple-rpc
 bun start
 ```
 
