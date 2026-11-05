@@ -83,7 +83,7 @@ async function api(url,data){
 const options=data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)};
 const response=await fetch(url,options);
 const json=await response.json();
-if(!response.ok||json.error)throw new Error(json.error||'HTTP '+response.status);
+if(!response.ok)throw new Error(json.error||'HTTP '+response.status);
 return json;
 }
 async function rpc(method,params={}){const r=await api('/rpc',{jsonrpc:'2.0',id:Date.now(),method,params});if(r.error)throw new Error(r.error.message);return r.result;}
