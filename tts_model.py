@@ -39,6 +39,15 @@ def _has_symlinks(directory: Path) -> bool:
     return False
 
 
+def _hardlink_or_copy(source: str, destination: str) -> str:
+    """Prefer zero-extra-space regular hard links (same APFS volume)."""
+    try:
+        os.link(Path(source).resolve(), destination)
+    except OSError:
+        shutil.copy2(source, destination)
+    return destination
+
+
 def materialize_model(source: str | Path, destination: str | Path) -> Path:
     """Return a model directory containing real files, not HF cache symlinks.
 
@@ -68,8 +77,9 @@ def materialize_model(source: str | Path, destination: str | Path) -> Path:
     if temp.exists():
         shutil.rmtree(temp)
     try:
-        # symlinks=False dereferences HF cache links and copies regular data files.
-        shutil.copytree(source, temp, symlinks=False)
+        # Materialize as actual files, not symlinks. Hard links avoid doubling
+        # disk use on the same filesystem; copy2 handles cross-volume setups.
+        shutil.copytree(source, temp, symlinks=False, copy_function=_hardlink_or_copy)
         _check_model(temp)
         if _has_symlinks(temp):
             raise RuntimeError("ZeroTTS model preparation left symbolic links behind.")
