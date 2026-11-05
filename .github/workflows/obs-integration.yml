@@ -20,6 +20,8 @@ jobs:
         run: |
           node --check server.js
           node --check obs-bridge.js
+          node --check obs-auto.js
+          node --check tests/obs-auto.test.js
           node --check public/js/live.js
           node --check tests/obs-bridge.test.js
           bash -n scripts/install-mac.sh
@@ -46,5 +48,10 @@ jobs:
             sleep 1
           done
           grep -q 'Live Control' /tmp/dashboard.html
+          grep -q 'Kết nối OBS' /tmp/dashboard.html
+          if grep -q 'Tạo scene 9:16' /tmp/dashboard.html; then
+            echo 'Redundant manual scene button found' >&2
+            exit 1
+          fi
           curl -fsS http://127.0.0.1:3300/api/obs/status | grep -q '"connected":false'
           curl -fsS http://127.0.0.1:3300/api/state | grep -q '"tiktok"'
