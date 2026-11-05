@@ -17,7 +17,7 @@ function createObsAutomation(bridge, port, { intervalMs = 6000 } = {}) {
       Math.round(obs.canvas?.fps) === 30;
   }
 
-  async function reconcile() {
+  async function reconcile({ activate = false } = {}) {
     if (task) return task;
     task = (async () => {
       const obs = await bridge.getStatus();
@@ -28,7 +28,7 @@ function createObsAutomation(bridge, port, { intervalMs = 6000 } = {}) {
         return { ...obs, automation: status() };
       }
 
-      if (obs.sceneReady && canvasReady(obs)) {
+      if (!activate && obs.sceneReady && canvasReady(obs)) {
         ready = true;
         phase = 'ready';
         lastError = null;
@@ -68,7 +68,7 @@ function createObsAutomation(bridge, port, { intervalMs = 6000 } = {}) {
     session.close();
     bridge.savePassword(password);
     ready = false;
-    return reconcile();
+    return reconcile({ activate: true });
   }
 
   function status() {
