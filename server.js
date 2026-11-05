@@ -1214,7 +1214,17 @@ function broadcastNotification(method, params) {
   }
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    let url;
+    try { url = new URL(origin); } catch (_) { ws.close(1008, 'Invalid origin'); return; }
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) ||
+        url.port !== String(PORT)) {
+      ws.close(1008, 'Local origin required');
+      return;
+    }
+  }
   ws.send(
     JSON.stringify({
       jsonrpc: '2.0',
