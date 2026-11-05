@@ -22,18 +22,18 @@ Có thể đổi thư mục đích nếu cần bằng biến môi trường `TEM
 
 ## Thiết lập OBS lần đầu
 
-1. Mở OBS Studio. Vào **Tools → WebSocket Server Settings**, bật WebSocket server, **giữ bật Authentication** và port **4455**. Copy mật khẩu.
-2. Trong dashboard, mở **OBS WebSocket password**, nhập mật khẩu và bấm **Lưu trên máy**.
-3. Bấm **Tạo scene 9:16**. Phần mềm tạo scene `Chua Online | TikTok 9:16` và Browser Source `http://127.0.0.1:3000/?obs=1` ở 1080×1920, 30fps. Bấm lại không tạo trùng source.
+1. Server tự mở OBS và dashboard khi chạy trên Mac. **Lần đầu tiên**, trong OBS vào **Tools → WebSocket Server Settings**, bật WebSocket server, **giữ bật Authentication** và port **4455**. Copy mật khẩu.
+2. Nhập mật khẩu trên dashboard và bấm **Kết nối OBS**. **Xong:** chương trình tự tạo/chuyển sang scene `Chua Online | TikTok 9:16` cùng Browser Source `http://127.0.0.1:3000/?obs=1`, 1080×1920, 30 FPS. Không cần nút tạo scene riêng, và không tạo source trùng.
+3. Những lần sau `bun start` sẽ mở OBS + dashboard, tự kết nối bằng mật khẩu đã lưu và tự chuẩn bị sân khấu nếu thiếu. Nếu OBS đang ghi hình hoặc livestream, hệ thống **không can thiệp** vào scene hay độ phân giải, mà đợi khi dừng mới cấu hình tiếp.
 4. Test tiếng: trong OBS, chuột phải Browser Source → **Interact** → click sân khấu để mở khóa âm thanh nếu cần; kiểm tra Audio Mixer. Dùng **Ghi thử** trên dashboard, xem lại video và nghe âm thanh.
 5. Trong dashboard, nhập @username TikTok đang LIVE và chọn **Kết nối bình luận**. Nó đọc sự kiện phòng LIVE, không đăng nhập vào tài khoản.
-6. Khi TikTok đã cấp quyền dùng encoder/RTMP, lấy Server URL + Stream Key từ TikTok. Điền vào mục **Điểm phát video**, bấm **Lưu vào OBS**, rồi **Phát LIVE**. TikTok có thể yêu cầu hoàn tất thêm bước LIVE phía nền tảng.
+6. Khi TikTok đã cấp quyền dùng encoder/RTMP, lấy Server URL + Stream Key từ TikTok. Điền vào mục **Điểm phát video**, bấm **Phát LIVE** và xác nhận. Chương trình tự áp dụng key vào OBS trước khi phát. Nếu OBS đã có key từ lần trước, có thể để trống. TikTok có thể yêu cầu hoàn tất thêm bước LIVE phía nền tảng. **Không bao giờ tự phát LIVE chỉ vì kết nối OBS thành công.**
 
 **Repo không thể tự cấp quyền TikTok LIVE và không thể tự xin Stream Key.** Chỉ nhập key nếu TikTok đã cấp. Các nút LIVE trong dashboard điều khiển OBS qua WebSocket, không vượt qua điều kiện LIVE của TikTok.
 
 ## Sử dụng nhanh
 
-Dashboard hỗ trợ kết nối/ngắt TikTok, mở OBS, tạo scene, ghi thử/dừng ghi, phát/dừng livestream, bật tắt giả lập, thử thắp hương, cầu nguyện, xin xăm, gõ mõ và phát thử ZeroTTS.
+Dashboard hỗ trợ kết nối/ngắt TikTok, tự mở OBS và tạo scene, ghi thử/dừng ghi, phát/dừng livestream, bật tắt giả lập, thử thắp hương, cầu nguyện, xin xăm, gõ mõ và phát thử ZeroTTS. Nút tạo scene thủ công và nút lưu riêng RTMP không còn cần thiết.
 
 **Giả lập** dành cho thử nghiệm. Tắt khi LIVE thật để không hiển thị tương tác giả.
 
@@ -44,7 +44,7 @@ cd ~/projects/tiktok-live-temple-rpc
 bun start
 ```
 
-Mở lại http://127.0.0.1:3000/dashboard. Server chạy khi Terminal mở; nhấn Ctrl+C để dừng. Mật khẩu OBS cất trong `data/obs-config.json` (file local chỉ user đọc). Stream Key được OBS quản lý, không ghi vào mã nguồn và không trả về dashboard.
+OBS và dashboard sẽ tự mở trên Mac (có thể tắt bằng `TEMPLE_AUTOSTART=0 bun start`). Server chạy khi Terminal mở; nhấn Ctrl+C để dừng. Mật khẩu OBS cất trong `data/obs-config.json` (file local chỉ user đọc). Stream Key được OBS quản lý, không ghi vào mã nguồn và không trả về dashboard.
 
 ### Cài thủ công nếu đã clone repo
 
@@ -62,7 +62,7 @@ bun start
 | Vấn đề | Hướng xử lý |
 | --- | --- |
 | OBS chưa kết nối | Mở OBS, bật Tools → WebSocket Server Settings, kiểm tra port 4455 và password |
-| Đã kết nối nhưng không có scene | Bấm Tạo scene 9:16; nếu OBS đang record/stream, dừng trước khi đổi resolution |
+| Đã kết nối nhưng không có scene | Hệ thống tự tạo sau vài giây. Nếu OBS đang ghi/phát, cần dừng trước khi tự đổi độ phân giải; xem lỗi hiển thị trong mục OBS. |
 | Stream không có tiếng | OBS Browser Source → Interact → click; kiểm tra audio mixer và record thử |
 | TikTok không có sự kiện | Phòng phải đang LIVE công khai; connector không chính thức nên có thể lỗi khi TikTok đổi giao thức |
 | Start Stream báo lỗi | Kiểm tra quyền RTMP của tài khoản, Server URL và Stream Key |
