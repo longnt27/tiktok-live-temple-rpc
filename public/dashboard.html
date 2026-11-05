@@ -30,12 +30,15 @@ code{background:#222d3d;border-radius:5px;padding:3px 6px}
 <section class="panel">
 <h2>01 · OBS Studio</h2>
 <div id="obsStatus" class="status">Đang kiểm tra...</div>
-<div class="actions"><button data-obs="open" class="secondary">Mở OBS</button><button data-obs="setup">Tạo scene 9:16</button></div>
-<details style="margin-top:10px"><summary>OBS WebSocket password</summary>
-<label for="password">Lấy từ OBS → Tools → WebSocket Server Settings</label>
-<input id="password" type="password" autocomplete="off" placeholder="Mật khẩu OBS WebSocket">
-<div class="actions"><button data-obs="password" class="secondary">Lưu trên máy</button></div></details>
-<p class="notice">OBS WebSocket phải được bật ở cổng 4455. Giữ authentication bật; không mở cổng ra Internet.</p>
+<div id="obsPairBox">
+<label for="password">Mật khẩu OBS WebSocket (chỉ nhập một lần)</label>
+<input id="password" type="password" autocomplete="off" placeholder="Mật khẩu từ OBS → Tools → WebSocket Server Settings">
+<div class="actions"><button data-obs="pair" id="obsPairButton">Kết nối OBS</button></div>
+</div>
+<div id="obsHelp" class="notice">OBS cần bật WebSocket ở cổng 4455, giữ Authentication. Kết nối thành công là scene 9:16 được tạo luôn; những lần sau tự nhận lại.</div>
+<details style="margin-top:12px"><summary>Tùy chọn nâng cao</summary>
+<div class="actions"><button data-obs="open" class="secondary">Mở lại OBS</button></div>
+<p class="notice">Không mở port 4455 ra Internet. Trình phát OBS và dashboard đều chạy trên Mac của mày.</p></details>
 </section>
 <section class="panel">
 <h2>02 · TikTok LIVE</h2>
@@ -49,7 +52,7 @@ code{background:#222d3d;border-radius:5px;padding:3px 6px}
 <div id="streamStatus" class="status"></div>
 <label for="server">RTMP(S) server do TikTok cấp</label><input id="server" type="url" placeholder="rtmps://...">
 <label for="streamKey">Stream Key</label><input id="streamKey" type="password" autocomplete="off" placeholder="Không được đưa lên GitHub">
-<div class="actions"><button data-obs="destination">Lưu vào OBS</button></div>
+<p class="notice">Nếu đã lưu cấu hình RTMP ở OBS, có thể để trống hai ô. Khi bấm Phát LIVE, hệ thống tự lưu Server/Key mới (nếu nhập) rồi phát.</p>
 <div class="actions"><button data-obs="start-stream">● Phát LIVE</button><button data-obs="stop-stream" class="danger">■ Dừng LIVE</button></div>
 <div class="actions"><button data-obs="start-record" class="secondary">⏺ Ghi thử</button><button data-obs="stop-record" class="secondary">Dừng ghi</button></div>
 </section>
@@ -93,9 +96,19 @@ async function refresh(){
 try{
 const [obs,state]=await Promise.all([api('/api/obs/status'),api('/api/state')]);
 lastState=state;
+const setup=obs.automation||{};
 $('obsStatus').innerHTML=obs.connected?
-'<span class="green">● Đã kết nối OBS '+esc(obs.version||'')+'</span><br>Scene: '+esc(obs.currentScene||'?')+'<br>Canvas: '+obs.canvas.width+'×'+obs.canvas.height+'<br>Scene 9:16: '+(obs.sceneReady?'Sẵn sàng':'Chưa tạo'):
-'<span class="red">● Chưa kết nối OBS</span><br>'+esc(obs.error||'');
+  '<span class="green">● OBS đã kết nối '+esc(obs.version||'')+'</span><br>'+
+  (setup.ready?'<span class="green">✓ Sân khấu 9:16 sẵn sàng</span>':
+   setup.phase==='deferred'?'Đang phát/ghi. Sẽ tự thiết lập sau khi dừng.':
+   'Đang tự thiết lập sân khấu 9:16...')+
+  '<br>Scene: '+esc(obs.currentScene||'?')+
+  '<br>Canvas: '+obs.canvas.width+'×'+obs.canvas.height+
+  (setup.lastError && setup.phase==='error'?'<br><span class="red">'+esc(setup.lastError)+'</span>':''):
+  '<span class="red">● OBS chưa kết nối</span><br>'+esc(obs.error||'')+
+  '<br>Bật OBS → Tools → WebSocket Server Settings rồi nhập mật khẩu một lần.';
+$('obsPairBox').hidden=Boolean(obs.connected);
+$('obsHelp').hidden=Boolean(obs.connected && setup.ready);
 $('streamStatus').textContent='Phát LIVE: '+(obs.streaming?'ĐANG PHÁT':'Đã dừng')+' · Ghi hình: '+(obs.recording?'Đang ghi':'Đã dừng')+' · RTMP: '+(obs.destinationConfigured?'Đã cấu hình':'Chưa có key');
 $('tiktokStatus').textContent=state.tiktok?.connected?'● Đã kết nối @'+state.tiktok.username+' ('+(state.tiktok.viewerCount||0)+' xem)':state.tiktok?.connecting?'Đang kết nối...':(state.tiktok?.lastError||'Chưa kết nối');
 $('sim').textContent='Giả lập: '+(state.settings?.autoSim?'ĐANG BẬT':'TẮT');
@@ -109,11 +122,12 @@ async function run(button,task){button.disabled=true;try{const result=await task
 document.querySelectorAll('[data-obs]').forEach(btn=>btn.onclick=()=>run(btn,async()=>{
 const a=btn.dataset.obs;
 if(a==='stop-stream'&&!confirm('Dừng phát LIVE thật trên OBS?'))return 'Đã hủy';
-if(a==='start-stream'&&!confirm('Phát LIVE tới máy chủ RTMP đang cấu hình trong OBS?'))return 'Đã hủy';
-const data=a==='password'?{password:$('password').value}:a==='destination'?{server:$('server').value,key:$('streamKey').value}:{};
+if(a==='start-stream'&&!confirm('Phát LIVE tới máy chủ TikTok đang cấu hình trong OBS?'))return 'Đã hủy';
+const data=a==='pair'?{password:$('password').value}:
+  a==='start-stream'?{server:$('server').value,key:$('streamKey').value}:{};
 const r=await api('/api/obs/'+a,data);
-if(a==='password')$('password').value='';
-if(a==='destination')$('streamKey').value='';
+if(a==='pair')$('password').value='';
+if(a==='start-stream')$('streamKey').value='';
 return r;
 }));
 $('ttConnect').onclick=e=>run(e.currentTarget,()=>rpc('live.connect',{username:$('username').value}));
